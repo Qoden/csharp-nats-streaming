@@ -51,6 +51,8 @@ namespace STAN.Client
         /// <returns>The task object representing the asynchronous operation, containing the guid.</returns>
         Task<string> PublishAsync(string subject, byte[] data);
 
+        void PublishNoAck(string subject, byte[] data);
+
         /// <summary>
         /// Subscribe will create an Asynchronous Subscriber with
         /// interest in a given subject, assign the handler, and immediately

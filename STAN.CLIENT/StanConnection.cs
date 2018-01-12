@@ -163,6 +163,7 @@ namespace STAN.Client
                 try
                 {
                     nc = new ConnectionFactory().CreateConnection(opts.NatsURL);
+                    nc.InitializationTask.GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {
@@ -322,6 +323,15 @@ namespace STAN.Client
         public string Publish(string subject, byte[] data, EventHandler<StanAckHandlerArgs> handler)
         {
             return publish(subject, data, handler).GUID;
+        }
+
+        public void PublishNoAck(string subject, byte[] bytes)
+        {
+            var conn = nc ?? throw new StanConnectionClosedException();
+            var subj = pubPrefix + "." + subject;
+            var guid = newGUID();
+            var data = ProtocolSerializer.createPubMsg(clientID, guid, subject, bytes);
+            conn.Publish(subj, data);
         }
 
         internal PublishAck publish(string subject, byte[] data, EventHandler<StanAckHandlerArgs> handler)
