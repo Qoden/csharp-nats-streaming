@@ -16,7 +16,7 @@ namespace STAN.Client
 
         internal StanMsgHandlerArgs(StanMsg m)
         {
-            msg = m;
+            msg = m;            
         }
 
         /// <summary>

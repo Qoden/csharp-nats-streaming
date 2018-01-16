@@ -4,6 +4,7 @@
  * distribution, and is available at http://opensource.org/licenses/MIT
  *******************************************************************************/
 using System;
+using NATS.Client;
 
 namespace STAN.Client
 {
@@ -14,11 +15,14 @@ namespace STAN.Client
     {
         internal MsgProto proto;
         private  AsyncSubscription sub;
+        
+        public long ReceivedAt { get; }
 
-        internal StanMsg(MsgProto p, AsyncSubscription s)
+        internal StanMsg(MsgProto p, AsyncSubscription s, Msg raw)
         {
             proto = p;
             sub = s;
+            ReceivedAt = raw.ReceivedAt;
         }
 
         /// <summary>

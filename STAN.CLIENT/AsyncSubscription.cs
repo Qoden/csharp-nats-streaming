@@ -191,7 +191,7 @@ namespace STAN.Client
             sc.NATSConnection.Publish(localAckSubject, b);
         }
 
-        internal void processMsg(MsgProto mp)
+        internal void processMsg(MsgProto mp, Msg raw)
         {
             rwLock.EnterReadLock();
 
@@ -210,7 +210,7 @@ namespace STAN.Client
 
             if (cb != null && subsSc != null)
             {
-                StanMsgHandlerArgs args = new StanMsgHandlerArgs(new StanMsg(mp, this));
+                StanMsgHandlerArgs args = new StanMsgHandlerArgs(new StanMsg(mp, this, raw));
                 cb(this, args);
             }
 
