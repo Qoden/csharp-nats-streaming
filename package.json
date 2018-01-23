@@ -1,0 +1,8 @@
+{
+  "name": "csharp-nats-streaming",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "publish": "dotnet pack STAN.CLIENT -c Release && nuget push STAN.CLIENT/bin/Release/Qoden.STAN.CLIENT.*.nupkg -Source MyExchange"
+  }
+}
