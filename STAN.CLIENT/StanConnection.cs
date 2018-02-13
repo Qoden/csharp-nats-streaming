@@ -162,7 +162,16 @@ namespace STAN.Client
                 ncOwned = true;
                 try
                 {
-                    nc = new ConnectionFactory().CreateConnection(opts.NatsURL);
+                    var natsOpts = ConnectionFactory.GetDefaultOptions();
+                    //copied from 'processUrlString'
+                    var urls = opts.NatsURL.Split(',');
+                    for (var i = 0; i < urls.Length; i++)
+                    {
+                        urls[i] = urls[i].Trim();
+                    }
+                    natsOpts.Servers = urls;
+                    natsOpts.Timeout = opts.ConnectTimeout;
+                    nc = new ConnectionFactory().CreateConnection(natsOpts);
                     nc.InitializationTask.GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
