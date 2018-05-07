@@ -29,12 +29,20 @@ namespace STAN.Client
 
         internal void waitForSpace()
         {
-            lock (addLock)
+            try
             {
-                while (isAtCapacity())
+                Serilog.Log.Debug("STAN waitForSpace");
+                lock (addLock)
                 {
-                    Monitor.Wait(addLock);
+                    while (isAtCapacity())
+                    {
+                        Monitor.Wait(addLock);
+                    }
                 }
+            }
+            finally
+            {
+                Serilog.Log.Debug("STAN waitForSpace DONE");
             }
         }
 
@@ -48,58 +56,66 @@ namespace STAN.Client
             this.maxSize = maxSize;
         }
 
-        internal bool Remove(TKey key, out TValue value, int timeout)
+        internal bool Remove(TKey key, out TValue value, int timeout, string source)
         {
-            bool rv = false;
-            bool wasAtCapacity = false;
-
-            value = default(TValue);
-
-            lock (dLock)
+            try
             {
-                if (!finished)
+                Serilog.Log.Debug("STAN Remove {source}", source);
+                bool rv = false;
+                bool wasAtCapacity = false;
+
+                value = default(TValue);
+
+                lock (dLock)
                 {
-                    // check and wait if empty
-                    while (d.Count == 0)
+                    if (!finished && timeout != 0)
                     {
-                        if (timeout < 0)
+                        // check and wait if empty
+                        while (d.Count == 0)
                         {
-                            Monitor.Wait(dLock);
-                        }
-                        else
-                        {
-                            if (timeout > 0)
+                            if (timeout < 0)
                             {
-                                if (Monitor.Wait(dLock, timeout) == false)
+                                Monitor.Wait(dLock);
+                            }
+                            else
+                            {
+                                if (timeout > 0)
                                 {
-                                    throw new Exception("timeout");
+                                    if (Monitor.Wait(dLock, timeout) == false)
+                                    {
+                                        throw new Exception("timeout");
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    if (!finished)
-                    {
-                        rv = d.TryGetValue(key, out value);
-                    }
-                }
-
-                if (rv)
-                {
-                    wasAtCapacity = d.Count >= maxSize;
-                    d.Remove(key);
-
-                    if (wasAtCapacity)
-                    {
-                        lock (addLock)
+                        if (!finished)
                         {
-                            Monitor.Pulse(addLock);
+                            rv = d.TryGetValue(key, out value);
+                        }
+                    }
+
+                    if (rv)
+                    {
+                        wasAtCapacity = d.Count >= maxSize;
+                        d.Remove(key);
+
+                        if (wasAtCapacity)
+                        {
+                            lock (addLock)
+                            {
+                                Monitor.Pulse(addLock);
+                            }
                         }
                     }
                 }
-            }
 
-            return rv;
+                return rv;
+            }
+            finally
+            {
+                Serilog.Log.Debug("STAN Remove DONE");
+            }
 
         } // get
 
@@ -107,33 +123,49 @@ namespace STAN.Client
         // call again (until true)
         internal bool TryAdd(TKey key, TValue value)
         {
-            lock (dLock)
+            try
             {
-                // if at capacity, do not attempt to add
-                if (d.Count >= maxSize)
+                Serilog.Log.Debug("STAN TryAdd");
+                lock (dLock)
                 {
-                    return false;
+                    // if at capacity, do not attempt to add
+                    if (d.Count >= maxSize)
+                    {
+                        return false;
+                    }
+
+                    d[key] =  value;
+
+                    // if the queue count was previously zero, we were
+                    // waiting, so signal.
+                    if (d.Count <= 1)
+                    {
+                        Monitor.Pulse(dLock);
+                    }
+
+                    return true;
                 }
-
-                d[key] =  value;
-
-                // if the queue count was previously zero, we were
-                // waiting, so signal.
-                if (d.Count <= 1)
-                {
-                    Monitor.Pulse(dLock);
-                }
-
-                return true;
+            }
+            finally
+            {
+                Serilog.Log.Debug("STAN TryAdd DONE");
             }
         }
 
         internal void close()
         {
-            lock (dLock)
+            try
             {
-                finished = true;
-                Monitor.Pulse(dLock);
+                Serilog.Log.Debug("STAN close");
+                lock (dLock)
+                {
+                    finished = true;
+                    Monitor.Pulse(dLock);
+                }
+            }
+            finally
+            {
+                Serilog.Log.Debug("STAN close DONE");
             }
         }
 
@@ -141,9 +173,17 @@ namespace STAN.Client
         {
             get
             {
-                lock (dLock)
+                try
                 {
-                    return d.Count;
+                    Serilog.Log.Debug("STAN Count");
+                    lock (dLock)
+                    {
+                        return d.Count;
+                    }
+                }
+                finally
+                {
+                    Serilog.Log.Debug("STAN Count DONE");
                 }
             }
         }

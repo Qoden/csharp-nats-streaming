@@ -5,6 +5,7 @@
  *******************************************************************************/
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Threading;
 using NATS.Client;
 using System.Threading.Tasks;
@@ -67,7 +68,7 @@ namespace STAN.Client
 
         private void ackTimerCb(object state)
         {
-            connection.removeAck(this.guidValue);
+            connection.removeAck(this.guidValue, "ackTimerCb");
             invokeHandler(guidValue, "Timeout occurred.");
         }
 
@@ -252,13 +253,13 @@ namespace STAN.Client
                 lnc.Publish(args.Message.Reply, null);
         }
 
-        internal PublishAck removeAck(string guid)
+        internal PublishAck removeAck(string guid, string source)
         {
             PublishAck a;
 
             lock (mu)
             {
-                pubAckMap.Remove(guid, out a, 0);
+                pubAckMap.Remove(guid, out a, 0, source);
             }
 
             return a;
@@ -288,7 +289,7 @@ namespace STAN.Client
                 return;
             }
 
-            PublishAck a = removeAck(pa.Guid);
+            PublishAck a = removeAck(pa.Guid, "processAck");
 
             if (a != null)
                 a.invokeHandler(pa.Guid, pa.Error);
@@ -354,6 +355,8 @@ namespace STAN.Client
 
             lock (mu)
             {
+                Serilog.Log.Debug("STAN Locked mu");
+                
                 if (nc == null)
                     throw new StanConnectionClosedException();
 
@@ -383,7 +386,7 @@ namespace STAN.Client
             }
             catch
             {
-                removeAck(guidValue);
+                removeAck(guidValue, "publish");
                 throw;
             }
 
@@ -392,7 +395,9 @@ namespace STAN.Client
 
         public Task<string> PublishAsync(string subject, byte[] data)
         {
+            Serilog.Log.Debug("STAN before publish");
             PublishAck a = publish(subject, data, null);
+            Serilog.Log.Debug("STAN after publish");
             Task<string> t = new Task<string>(() =>
             {
                 a.wait();
