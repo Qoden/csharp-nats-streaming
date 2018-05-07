@@ -68,33 +68,7 @@ namespace STAN.Client
 
                 lock (dLock)
                 {
-                    if (!finished && timeout != 0)
-                    {
-                        // check and wait if empty
-                        while (d.Count == 0)
-                        {
-                            if (timeout < 0)
-                            {
-                                Monitor.Wait(dLock);
-                            }
-                            else
-                            {
-                                if (timeout > 0)
-                                {
-                                    if (Monitor.Wait(dLock, timeout) == false)
-                                    {
-                                        throw new Exception("timeout");
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!finished)
-                        {
-                            rv = d.TryGetValue(key, out value);
-                        }
-                    }
-
+                    rv = d.TryGetValue(key, out value);
                     if (rv)
                     {
                         wasAtCapacity = d.Count >= maxSize;
