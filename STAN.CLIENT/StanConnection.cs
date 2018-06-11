@@ -355,8 +355,6 @@ namespace STAN.Client
 
             lock (mu)
             {
-                Serilog.Log.Debug("STAN Locked mu");
-                
                 if (nc == null)
                     throw new StanConnectionClosedException();
 
@@ -395,9 +393,7 @@ namespace STAN.Client
 
         public Task<string> PublishAsync(string subject, byte[] data)
         {
-            Serilog.Log.Debug("STAN before publish");
             PublishAck a = publish(subject, data, null);
-            Serilog.Log.Debug("STAN after publish");
             Task<string> t = new Task<string>(() =>
             {
                 a.wait();
