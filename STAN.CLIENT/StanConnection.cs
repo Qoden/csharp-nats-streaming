@@ -513,11 +513,11 @@ namespace STAN.Client
         public void Close()
         {
             Msg reply = null;
-
+            IConnection lnc;
+            
             lock (mu)
             {
-
-                IConnection lnc = nc;
+                lnc = nc;
                 nc = null;
 
                 if (lnc == null)
@@ -537,45 +537,45 @@ namespace STAN.Client
                     hbSubscription.Unsubscribe();
                     hbSubscription = null;
                 }
+            }
+            //Since above code sets 'nc' to null here only one thread keep processing Close request.  
+            var req = new CloseRequest();
+            req.ClientID = this.clientID;
 
-                CloseRequest req = new CloseRequest();
-                req.ClientID = this.clientID;
+            try
+            {
+                if (this.closeRequests != null)
+                {
+                    reply = lnc.Request(closeRequests, ProtocolSerializer.marshal(req));
+                }
+            }
+            catch (StanBadSubscriptionException)
+            {
+                // it's possible we never actually connected.
+                return;
+            }
 
+            if (reply != null)
+            {
+                CloseResponse resp = new CloseResponse();
                 try
                 {
-                    if (this.closeRequests != null)
-                    {
-                        reply = lnc.Request(closeRequests, ProtocolSerializer.marshal(req));
-                    }
+                    ProtocolSerializer.unmarshal(reply.Data, resp);
                 }
-                catch (StanBadSubscriptionException)
+                catch (Exception e)
                 {
-                    // it's possible we never actually connected.
-                    return;
+                    throw new StanCloseRequestException(e);
                 }
 
-                if (reply != null)
+                if (!string.IsNullOrEmpty(resp.Error))
                 {
-                    CloseResponse resp = new CloseResponse();
-                    try
-                    {
-                        ProtocolSerializer.unmarshal(reply.Data, resp);
-                    }
-                    catch (Exception e)
-                    {
-                        throw new StanCloseRequestException(e);
-                    }
-
-                    if (!string.IsNullOrEmpty(resp.Error))
-                    {
-                        throw new StanCloseRequestException(resp.Error);
-                    }
+                    throw new StanCloseRequestException(resp.Error);
                 }
+            }
 
-                if (ncOwned && lnc != null)
-                {
-                    lnc.Close();
-                }
+            if (ncOwned && lnc != null)
+            {
+                lnc.Close();
             }
         }
 
